@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.ExecutionException;
 
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
@@ -40,14 +40,19 @@ public class CommandListener extends ListenerAdapter
 				{
 					e.getGuild().retrieveMemberById(id).complete().getUser().openPrivateChannel().queue(channel ->
 					{
-						e.getGuild().retrieveMemberById(DataHandler.getNextEntryWrap(santalist, santalist.indexOf(id)))
-						.queue(member ->
+						String name = null;
+						try
 						{
-							String name = member.getUser().getName();
-							channel.sendMessage("Your secret santa is " + name
+							name = DataHandler.secretSantaGiftTo(santalist, id).getName();
+						}
+						catch (InterruptedException | ExecutionException e1)
+						{
+							e1.printStackTrace();
+						}
+						
+						channel.sendMessage("Your secret santa is " + name
 								+ "! Remember the secret santa rules and your secret santa's entry in the doc pinned in mod chat!")
 								.queue();
-						});
 					});
 				});
 				
@@ -59,15 +64,72 @@ public class CommandListener extends ListenerAdapter
 			{
 				e.getAuthor().openPrivateChannel().queue(channel ->
 				{
-					e.getGuild().retrieveMemberById(DataHandler.getNextEntryWrap(santalist, santalist.indexOf(e.getAuthor().getId())))
-					.queue(member ->
+					String name = null;
+					try
 					{
-						String name = member.getUser().getName();
-						channel.sendMessage("Your secret santa is " + name
-								+ "! Remember the secret santa rules and your secret santa's entry in the doc pinned in mod chat!")
-						.queue();
-					});
+						name = DataHandler.secretSantaGiftTo(santalist, e.getAuthor().getId()).getName();
+					}
+					catch (InterruptedException | ExecutionException e1)
+					{
+						e1.printStackTrace();
+					}
+					
+					channel.sendMessage("Your secret santa is " + name
+							+ "! Remember the secret santa rules and your secret santa's entry in the doc pinned in mod chat!")
+					.queue();
 				});
+				return;
+			}
+			
+			//allows someone to ask their secret santa for their address to send a gift
+			if(args[0].equalsIgnoreCase(Main.PREFIX + "requestaddress"))
+			{
+				//send to NEXT member in list
+				try
+				{
+					DataHandler.secretSantaGiftTo(santalist, e.getAuthor().getId()).openPrivateChannel()
+						.queue(channel ->
+						{
+							channel.sendMessage("Your secret santa is requesting your address so that they can send your gift to you!"
+									+ " To send the address to your secret santa, use **" + Main.PREFIX + "sendaddress {your address}** to send your address "
+											+ "anonymously to your secret santa- please also remember that you are under no obligation to do this"
+											+ " if you don't feel comfortable with it, and that my code will NOT and will NEVER store your address. If"
+											+ " you would like to check this yourself, feel free to view the sourcecode for this project: "
+											+ "https://github.com/dsipaint/Secret-Santa").queue();
+						});
+				}
+				catch (InterruptedException | ExecutionException e1)
+				{
+					e1.printStackTrace();
+				}
+				
+				return;
+			}
+			
+			//allows someone to ask their secret santa for their address to send a gift
+			if(args[0].equalsIgnoreCase(Main.PREFIX + "sendaddress"))
+			{
+				//actually send an address
+				if(args.length == 1)
+					return;
+				
+				//send to PREVIOUS member in list
+				try
+				{
+					DataHandler.secretSantaGiftFrom(santalist, e.getAuthor().getId()).openPrivateChannel()
+						.queue(channel ->
+						{
+							channel.sendMessage("Your address has been sent to your secret santa gifter anonymously. Please also remember "
+									+ "that my code does NOT and will NEVER store your address anywhere. If you'd like to check this yourself, I "
+									+ "encourage you to check the sourcecode for this project:"
+									+ "https://github.com/dsipaint/Secret-Santa").queue();
+						});
+				}
+				catch (InterruptedException | ExecutionException e1)
+				{
+					e1.printStackTrace();
+				}
+				
 				return;
 			}
 		}

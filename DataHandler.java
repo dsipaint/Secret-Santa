@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+
+import net.dv8tion.jda.api.entities.User;
 
 public class DataHandler
 {
@@ -17,7 +20,6 @@ public class DataHandler
 		try
 		{
 			PrintWriter pw = new PrintWriter(new FileWriter(new File(FILE_LOC)));
-			names.forEach(pw::println);
 			pw.close();
 		}
 		catch (IOException e)
@@ -48,7 +50,6 @@ public class DataHandler
 		return names;
 	}
 	
-	@SuppressWarnings("unchecked")
 	public static ArrayList<String> shuffle(ArrayList<String> list)
 	{
 		ArrayList<String> listcopy  = new ArrayList<String>();
@@ -64,11 +65,33 @@ public class DataHandler
 		return shuffledlist;
 	}
 	
+	//returns user that [id] is supposed to give a gift TO
+	public static User secretSantaGiftTo(ArrayList<String> list, String id) throws InterruptedException, ExecutionException
+	{
+		return Main.jda.retrieveUserById(getNextEntryWrap(list, list.indexOf(id))).submit().get();
+	}
+	
+	//returns user that [id] is supposed to get a gift FROM
+	public static User secretSantaGiftFrom(ArrayList<String> list, String id) throws InterruptedException, ExecutionException
+	{
+		return Main.jda.retrieveUserById(getPreviousEntryWrap(list, list.indexOf(id))).submit().get();
+	}
+	
+	//the NEXT entry is the person who is receiving the gift from person [index]
 	public static String getNextEntryWrap(ArrayList<String> list, int index)
 	{
 		if(index == list.size() - 1) //wrap entries around to start if at end
 			return list.get(0);
 		
 		return list.get(index + 1); //otherwise get next entry
+	}
+	
+	//the PREVIOUS entry is the person who is giving the gift to person [index]
+	public static String getPreviousEntryWrap(ArrayList<String> list, int index)
+	{
+		if(index == 0) //wrap entries around to end if at start
+			return list.get(list.size() - 1);
+		
+		return list.get(index + -1); //otherwise get previous entry
 	}
 }
