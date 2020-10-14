@@ -20,6 +20,10 @@ public class DataHandler
 		try
 		{
 			PrintWriter pw = new PrintWriter(new FileWriter(new File(FILE_LOC)));
+			names.forEach(id ->
+			{
+				pw.println(id);
+			});
 			pw.close();
 		}
 		catch (IOException e)
