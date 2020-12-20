@@ -2,6 +2,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -31,8 +32,6 @@ public class CommandListener extends ListenerAdapter
 			if(args[0].equalsIgnoreCase(Main.PREFIX + "secretsantashuffle"))
 			{
 				santalist = DataHandler.shuffle(santalist);
-				for(int i = 0; i < santalist.size(); i++)
-					System.out.println(santalist.get(i));
 				
 				DataHandler.writeNames(santalist); //save the shuffle
 				
@@ -52,7 +51,7 @@ public class CommandListener extends ListenerAdapter
 						}
 						
 						channel.sendMessage("Your secret santa is " + name
-								+ "! Remember the secret santa rules and your secret santa's entry in the doc pinned in mod chat!")
+								+ "! Remember the secret santa rules and your secret santa's entry in the doc pinned in mod chat, and use " + Main.PREFIX + "sshelp in DMs for help!")
 								.queue();
 					});
 				});
@@ -80,70 +79,110 @@ public class CommandListener extends ListenerAdapter
 				e1.printStackTrace();
 			}
 			
-			e.getChannel().sendMessage("Your secret santa is " + name
-					+ "! Remember the secret santa rules and your secret santa's entry in the doc pinned in mod chat!")
+			e.getChannel().sendMessage("You are buying for " + name
+					+ "! Remember the secret santa rules and your person's entry in the doc pinned in mod chat, and use " + Main.PREFIX + "sshelp in DMs for help!")
 			.queue();
 
 			return;
 		}
 		
-		//allows someone to ask their secret santa for their address to send a gift
-		if(args[0].equalsIgnoreCase(Main.PREFIX + "requestaddress"))
+		//secret santa mail
+		if(args[0].equalsIgnoreCase(Main.PREFIX + "ssm"))
 		{
-			//send to NEXT member in list
-			try
-			{
-				DataHandler.secretSantaGiftTo(santalist, e.getAuthor().getId()).openPrivateChannel()
-					.queue(channel ->
-					{
-						channel.sendMessage("Your secret santa is requesting your address so that they can send your gift to you!"
-								+ " To send the address to your secret santa, use **" + Main.PREFIX + "sendaddress {your address}** to send your address "
-										+ "anonymously to your secret santa- please also remember that you are under no obligation to do this"
-										+ " if you don't feel comfortable with it, and that my code will NOT and will NEVER store your address. If"
-										+ " you would like to check this yourself, feel free to view the sourcecode for this project: "
-										+ "https://github.com/dsipaint/Secret-Santa").queue();
-					});
-			}
-			catch (InterruptedException | ExecutionException e1)
-			{
-				e1.printStackTrace();
-			}
-			
-			return;
-		}
-		
-		//allows someone to ask their secret santa for their address to send a gift
-		if(args[0].equalsIgnoreCase(Main.PREFIX + "sendaddress"))
-		{
-			//actually send an address
 			if(args.length == 1)
 				return;
 			
-			//send to PREVIOUS member in list
-			try
+			// ^ssm give
+			if(args[1].equalsIgnoreCase("give"))
 			{
-				DataHandler.secretSantaGiftFrom(santalist, e.getAuthor().getId()).openPrivateChannel()
-					.queue(channel ->
-					{
-						String addr = "";
-						for(int i = 1; i < args.length; i++)
-							addr += args[i] + " ";
-						
-						addr = addr.substring(0, addr.length() - 1);
-						
-						channel.sendMessage("Your secret santa's address is: " + addr).queue();
-					});
+				if(args.length == 2)
+				{
+					e.getChannel().sendMessage("You must provide a message!").queue();
+					return;
+				}
 				
-				e.getChannel().sendMessage("Your address has been sent to your secret santa gifter anonymously. Please also remember "
-						+ "that my code does NOT and will NEVER store your address anywhere. If you'd like to check this yourself, I "
-						+ "encourage you to check the sourcecode for this project:"
-						+ "https://github.com/dsipaint/Secret-Santa").queue();
+				//send message to person the author is giving a gift to
+				try
+				{
+					DataHandler.secretSantaGiftTo(santalist, e.getAuthor().getId()).openPrivateChannel().queue(channel ->
+					{
+						//message concatenation
+						String ssmessage = "";
+						for(int i = 2; i < args.length; i++)
+							ssmessage += args[i] + " ";
+						
+						//send message
+						EmbedBuilder message_embed = new EmbedBuilder()
+								.setTitle("Secret Santa")
+								.setAuthor("Person you are receiving a gift FROM -> you:")
+								.setDescription(ssmessage)
+								.setColor(65280);
+						
+						channel.sendMessage(message_embed.build()).queue();
+						e.getChannel().sendMessage(message_embed.setAuthor("you -> Person you are giving a gift TO (" + channel.getName() + ")", 
+								null, channel.getUser().getAvatarUrl()).build()).queue();
+					});
+				}
+				catch (InterruptedException | ExecutionException e1)
+				{
+					e1.printStackTrace();
+				}
+				
+				return;
 			}
-			catch (InterruptedException | ExecutionException e1)
+			
+			// ^ssm receive
+			if(args[1].equalsIgnoreCase("receive"))
 			{
-				e1.printStackTrace();
+				if(args.length == 2)
+				{
+					e.getChannel().sendMessage("You must provide a message!").queue();
+					return;
+				}
+				
+				//send message to person the author is receiving a gift from
+				try
+				{
+					DataHandler.secretSantaGiftFrom(santalist, e.getAuthor().getId()).openPrivateChannel().queue(channel ->
+					{
+						//message concatenation
+						String ssmessage = "";
+						for(int i = 2; i < args.length; i++)
+							ssmessage += args[i] + " ";
+						
+						//send message
+						EmbedBuilder message_embed = new EmbedBuilder()
+								.setTitle("Secret Santa")
+								.setAuthor("Person you are giving a gift TO (" + e.getAuthor().getName() + ")  -> you:"
+										,null, e.getAuthor().getAvatarUrl())
+								.setDescription(ssmessage)
+								.setColor(65280);
+						
+						channel.sendMessage(message_embed.build()).queue();
+						e.getChannel().sendMessage(message_embed.setAuthor("you -> Person you are receiving a gift FROM").build()).queue();
+					});
+				}
+				catch (InterruptedException | ExecutionException e1)
+				{
+					e1.printStackTrace();
+				}
+				
+				return;
 			}
-	}
+		}
+		
+		if(args[0].equalsIgnoreCase(Main.PREFIX + "sshelp"))
+		{
+			e.getChannel().sendMessage(new EmbedBuilder()
+					.setTitle("Secret Santa")
+					.setColor(65280)
+					.setDescription("This is al's secret santa code! Here are the commands (all of the commands are DM-only commands):")
+					.appendDescription("\n\n**" + Main.PREFIX + "secretsanta:** reminds you who your secret santa is")
+					.appendDescription("\n\n**" + Main.PREFIX + "ssm {give/receive} {message}** allows you to contact the person you are "
+							+ "buying a gift for and receiving a gift from. **" + Main.PREFIX + "ssm give** will send a message to the person you're giving a gift to, and "
+							+ "**" + Main.PREFIX + "ssm receive** will send a message to the person you're receiving a gift from. Remember that these conversations are anonymous!!")
+					.build()).queue();
+		}
 	}
 		
 }

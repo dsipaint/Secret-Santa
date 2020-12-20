@@ -32,7 +32,7 @@ public class Main
 		try
 		{
 			jda = JDABuilder.createDefault("")
-					.enableIntents(GatewayIntent.GUILD_MEMBERS)
+					.enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.DIRECT_MESSAGES)
 					.build();
 		}
 		catch (LoginException e)
